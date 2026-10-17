@@ -1,0 +1,24 @@
+{
+  "skill_name": "video-fast",
+  "notes": "Test prompts only. Running the full with-skill/baseline harness costs a lot of time and tokens (each run = a full video build), so the practical loop is: run one prompt end-to-end every time the skill changes, and inspect the artifacts by hand. The scripts have already been validated against a real 103s project (see the skill's pitfalls.md for what that run surfaced).",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我做一个 1 分半左右的中文介绍视频，讲讲我们内部的报账流程，要有配音和字幕，字幕放在画面中下方，配乐你随便来一段，成品放到桌面/视频 目录。",
+      "expected_output": "A ~90s 1920x1080 MP4 with Chinese narration (edge-tts via proxy), clause-level karaoke captions in the lower-middle band, a synthesized BGM bed, delivered next to the project folder with a contact sheet. Frames built from the video-fast skeleton, lint 0 errors, check passed before render.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "上次那个视频配音听着太扁平了，字幕也是一蹦一跳的，帮我换一个更有感情的男声，字幕改成整句显示，重新出一版。",
+      "expected_output": "Re-run tts_lines.py with --target-durations (so picture cues stay locked), captions_clauses.py for whole-clause subtitles, re-assemble, re-check, re-render to a new renders/video-vN.mp4 without touching any frame content.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "给我做个 40 秒的竖版短视频介绍 pi 这个工具，要能发抖音，字幕大一点。",
+      "expected_output": "9:16 1080x1920 project: format set in STORYBOARD frontmatter, caption band recomputed for the taller canvas, cards/layout stacked vertically rather than side-by-side, captions scaled up, render verified with a snapshot before the final MP4.",
+      "files": []
+    }
+  ]
+}
