@@ -26,7 +26,7 @@ description: >
 | --- | --- |
 | 30s–3min 中文讲解/介绍视频，有配音、字幕、配乐 | 本文档全流程，不读 hyperframes* 重型技能 |
 | 只改一个已建好的项目（换音色/改字幕/改某帧/重渲） | 直接跳到对应步骤，只读 `references/composition-contract.md` 里相关小节 |
-| 抖音竖版（1080×1920） | 全流程同横向片，但：手写帧（frame_kit 是 16:9 写死）、字幕 `--band-top 1560`、硬切转场；详见 pitfalls「竖版与重配音」一节 |
+| 抖音竖版（1080×1920） | 全流程同横向片，但：手写帧（frame_kit 是 16:9 写死）、字幕 `--band-top 1560`、硬切转场；详见 pitfalls「竖版与重配音」一节。要做快节奏/去同质化版（14 镜头 2–4s、撞色大字报、BGM 硬停、自证镜头）见 pitfalls「竖版快节奏版」 |
 | 需要 registry 积木/组件、3D、着色器、媒体调色、幻灯片、按网站或 PR 出片 | 先本技能跑不通再进 `hyperframes-registry` / `hyperframes-animation` / `media-use` / 对应 workflow 技能 |
 
 一次视频的 token 预算参考（中文，含脚本、分镜、10 帧合成、配音、字幕、渲染）：
@@ -230,6 +230,7 @@ node scripts/look.mjs . --at 12.5   # 只盯某一帧
   ③ 总结这次的经验回写本技能（pitfalls / SKILL.md / README），commit + push 到 GitHub；④ 新经验同步进长期记忆
 
 - 交付物：成片 MP4 + 预览快照 jpg（+ 音色样本、工程目录）。微信渠道用 `send_file_to_wechat` 发文件
+- 平台响度：渲染后 `ffmpeg -af loudnorm=I=-14:TP=-1.5 -ar 44100` 再交付（抖音/视频号基准；渲染出的 AAC 可能是 96k）
 - 报告里给：时长、画幅、帧清单、**哪里做了取舍**（例如"为了连贯把总长从 1:57 收到 1:43"）
 - 用户说"配音不好听/字幕断句不对"时的定点修法：
   - 换音色 → 只重跑 2.2（带 `--target-durations`）+ 2.4 + 组装 + 渲染，画面零改动

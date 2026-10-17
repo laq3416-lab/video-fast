@@ -167,9 +167,17 @@ def build_groups(meta: dict, starts: dict[int, float], script: dict[int, str]) -
         if wi < len(words):
             (groups[-1].extend(words[wi:]) if groups else groups.append(words[wi:]))
 
+    def frame_of(g):
+        f0 = 1
+        for f, st in sorted(starts.items(), key=lambda kv: kv[1]):
+            if g[0]["start"] >= st - 0.01:
+                f0 = f
+        return f0
+
     merged: list[list[dict]] = []
     for g in groups:
-        if merged and sum(nchars(w["text"]) for w in merged[-1]) < MIN_CHARS and \
+        if merged and frame_of(merged[-1]) == frame_of(g) and \
+                sum(nchars(w["text"]) for w in merged[-1]) < MIN_CHARS and \
                 sum(nchars(w["text"]) for w in merged[-1]) + sum(nchars(w["text"]) for w in g) <= MAX_CHARS:
             merged[-1] = merged[-1] + g
         else:
