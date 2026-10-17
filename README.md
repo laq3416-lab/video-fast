@@ -37,6 +37,7 @@ scripts/
   new_frame.py              lint-clean 的帧骨架（手写单帧时用）
   fix_ids.py                元素 id 前缀安全修复（含 getElementById 同步）
   sync_frame_durations.py   帧时长同步（改过配音必跑）
+  look.mjs                  项目的"眼睛"：时间轴体检 + 双遍确定性 + 文字裁切 + 音频处方 + 接触表
 evals/evals.json            三个真实测试提示词
 ```
 
@@ -50,6 +51,31 @@ evals/evals.json            三个真实测试提示词
 
 每个原型都接受内容与 `cue`：cue 会去配音的词级时间戳里找“这个词被念到的时刻”，揭示就落在那一刻，
 所以结构上不可能把画面一次铺满（那正是“幻灯片感”的来源）。
+
+## 检查：`look.mjs`
+
+`hyperframes lint/check` 查的是静态约定；`look.mjs` 查的是**画出来的东西对不对**——
+把"图对不对"从肉眼判断变成可断言的检查，渲染前 15 秒跑完。
+
+```bash
+node scripts/look.mjs .            # 全量：静态体检 + 音频处方 + 浏览器双遍 + 接触表
+node scripts/look.mjs . --fast     # 0.5 秒：只跑静态体检 + 音频处方
+node scripts/look.mjs . --at 12.5  # 只盯某一帧
+```
+
+零 npm 依赖（复用 hyperframes 自带的 `puppeteer-core` 与 `chrome-headless-shell`）。退出码 `0/1/2`。
+
+| 检查 | 拦的是什么 |
+| --- | --- |
+| 双遍乱序确定性 | 同一 `t` 两次求值画出两幅不同的画（`onUpdate` 里用 `Math.random`/`Date.now`、状态残留、媒体未 seek） |
+| 文字被裁 | 出画框、或被 `overflow:hidden` 父盒切掉（`DOM Range` 量真实渲染盒，给出选择器） |
+| 纯色帧 | 场景中点整幅画是空的（历史头号事故：某帧整帧空白） |
+| 语音 vs 帧时长 | 语音比所属场景长 → 话没说完画面就切了 |
+| 音频处方 | 逐轨峰值、人声与 BGM 落差（10–24 dB）、整片 EBU R128 LUFS + true peak |
+
+前三项的方法来自 [OpenFilm](https://github.com/openfilm/openfilm) 的 `openfilm look`（MIT）：
+固定种子洗牌两遍、8×8 降采样后最大通道差 > 32/255 判为两幅不同的画、亮度极差 < 6 判为纯色帧。
+后两项与接触表是针对中文配音视频补的。
 
 ## 快速开始
 
@@ -72,6 +98,7 @@ python scripts/bgm_synth.py --out my-video/assets/bgm/track.wav --duration 70 --
 # 4. 时长同步 → 组装 → 检查 → 出片
 python scripts/sync_frame_durations.py --project my-video
 cd my-video && npx hyperframes lint && npx hyperframes check
+node ../scripts/look.mjs .        # 双遍确定性 / 文字裁切 / 纯色帧 / 音频处方
 npx hyperframes render --quality high --output renders/video.mp4
 ```
 

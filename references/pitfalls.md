@@ -146,3 +146,31 @@ Python 里 f-string 需要 `{{}}` 转义，普通字符串不需要。混用时�
 **同一原型连着几帧，看着像幻灯片**
 `story_build.py` 会检查相邻同原型与强构图占比并提示。同原型也要换布局（卡片数、尺寸、pill 形态）；
 实在只能同原型，就让两帧的元素构成差得足够远。
+
+## 检查与工具链（look.mjs 相关）
+
+**想自己驱动 HyperFrames 页面截图/定位，`window.__hf` 一直拿不到**
+`index.html` 本身**不带 runtime**——`window.__hf` / `window.__player` 是 hyperframes 在渲染或预览时
+注入 `dist/hyperframe.runtime.iife.js` 之后才出现的，而且 `__hf.seek` 是个 getter，没有控制桥（父页面
+postMessage）时永远返回 `undefined`。
+正确入口：`page.addScriptTag({ content: readFileSync(<hyperframes>/dist/hyperframe.runtime.iife.js) })`
+→ 等 `window.__player.getDuration() > 0` → `window.__player.pause(); window.__player.seek(t)`。
+`look.mjs` 已经封好，不用重写。
+
+**导航用 `waitUntil: 'load'` 会卡 30 秒甚至超时**
+带 `data-duration` 的 `<audio>`/`<video>` 预取会把 load 事件拖住。用 `domcontentloaded`，
+真正的就绪判断交给 `window.__player` / `window.__timelines` 的轮询。
+
+**只 seek `__timelines['main']`，子合成还是黑屏**
+主时间轴不驱动子合成时间轴；`data-composition-src` 的子合成由 runtime 挂载后各自有独立 timeline
+（`__timelines['01-hook']` 等）。要么用 `__player.seek`，要么逐个 `seek(t - data-start)`——后者迟早写错。
+
+**双遍确定性报红，但我的代码里没有 Math.random**
+真凶通常是 `onUpdate` 回调里改样式、`Date.now()` 算进度、或是第二次 seek 时上一条 `fromTo` 的
+`immediateRender` 状态残留。GSAP 的 `to(el, {x: () => Math.random()})` **不会**触发（函数值在 tween
+创建时就求值了），所以报红说明状态确实每帧都在变，按上面三条找。
+
+**文字裁切检查依赖"当前在播的场景"**
+hyperframes 把所有子合成内联进主文档，非当前场景靠 `opacity` 隐藏。`look.mjs` 只扫 `data-start ≤ t < 结束`
+的那几个场景根，并且跳过 `opacity < 0.05` 的节点——所以"字还在入场途中"不会误报，但**同一场景里
+被时间轴藏起来又显示出来的旧字幕**要确认它的容器真的被隐藏了。

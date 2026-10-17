@@ -188,9 +188,33 @@ python <SKILL_DIR>/scripts/sync_frame_durations.py --project <PROJ>
 cd <PROJ>
 npx hyperframes lint         # 0 error 才能继续；warning 里 id_override_reduced_specificity 可忽略
 npx hyperframes check        # 硬门槛：runtime / layout / contrast
+node <SKILL_DIR>/scripts/look.mjs .        # 我自己的"眼睛"：双遍确定性 + 文字被裁 + 纯色帧 + 音频处方 + 接触表
 npx hyperframes snapshot --at <各帧中点>   # 出 contact-sheet，自己先看一眼再渲染
 npx hyperframes render --quality high --output renders/video-v2.mp4
 ```
+
+**`look.mjs` 与 `snapshot` 的分工**：snapshot 给你一张能看的图；`look.mjs` 把"图画得对不对"变成可断言的检查，
+渲染前 15 秒跑完，能拦住 lint/check 拦不到的一整类错：
+
+| 检查 | 拦的是什么 | 分不清就要返工的典型症状 |
+| --- | --- | --- |
+| 双遍乱序确定性 | 同一 `t` 画出两幅不同的画 | `onUpdate` 里用了 `Math.random`/`Date.now`、两次渲染结果不一样、抽帧对不上 |
+| 文字被裁 | 出画框 / 被 `overflow:hidden` 父盒切掉 | 字幕长了一行就被切、标题撞边、`snapshot` 缩略图看不清的细裁 |
+| 纯色帧 | 场景中点整幅画是空的 | "第 2 帧整帧空白"（历史头号事故） |
+| 语音 vs 帧时长 | 语音比所属场景长 | 话没说完画面就切了 |
+| 音频处方 | 音轨峰值 / 人声与 BGM 落差 / 整片 LUFS 与真峰 | 配音被 BGM 盖、手机外放听不清、转 AAC 削波 |
+
+三种用法，按时间预算挑：
+
+```bash
+node scripts/look.mjs . --fast      # 0.5 秒：只跑时间轴体检 + 音频处方（改完配音先跑这个）
+node scripts/look.mjs .             # 15 秒：加上浏览器双遍 + 文字裁切 + 接触表
+node scripts/look.mjs . --at 12.5   # 只盯某一帧
+```
+
+零 npm 依赖：复用 hyperframes 自带的 `puppeteer-core` 与 `chrome-headless-shell`，并自己注入
+`hyperframe.runtime.iife.js`（index.html 本身不带 runtime，`window.__player.seek(t)` 是真正的定位入口）。
+退出码：`0` 无错误 / `1` 有错误 / `2` 脚本崩了。
 
 - 组装：用 workflow 的 `assemble-index.mjs`（需要 STORYBOARD.md 的每帧 duration/src），
   转场用 `transitions.mjs inject|verify`；或沿用上一次项目的这两步命令
@@ -221,6 +245,7 @@ npx hyperframes render --quality high --output renders/video-v2.mp4
 4. **先音频后画面**：时间轴定死再画，省掉"帧时长变了要改所有卡点"的连锁返工
 5. **固定参数不要现场试**：head/tail、字幕分组、BGM 参数、音色都已给默认值
 6. **快照先于渲染**：一次渲染 ≈ 2 分钟，一次快照 ≈ 20 秒，能拦下大半返工
+7. **`look.mjs --fast` 比渲染便宜两个数量级**：改完配音、改完帧时长，先跑它，红了就别渲
 
 ## 目录
 
@@ -229,6 +254,7 @@ npx hyperframes render --quality high --output renders/video-v2.mp4
 - `references/pitfalls.md` — 已踩过的坑与解法（报错时再读）
 - `examples/pi-skills-story.json` — 一份可直接改用的 story.json 示例（7 帧 / 65s）
 - `scripts/preflight.py` — 环境一次体检
+- `scripts/look.mjs` — 项目的"眼睛"：时间轴体检 + 音频处方 + 双遍确定性 + 文字裁切 + 接触表（`--fast` 只跑前两项）
 - `scripts/story_build.py` — story.json → SCRIPT.md + STORYBOARD.md + 全部帧（数据驱动主入口）
 - `scripts/frame_kit.py` — 帧原型库（kinetic-hook / card-row / panel-demo），含 cue 自动解析与多样性检查
 - `scripts/tts_lines.py` — 逐句配音 + 时间戳 + 拉伸对齐 + audio_meta
