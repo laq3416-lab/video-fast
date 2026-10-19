@@ -253,3 +253,13 @@ lint/check/look.mjs 全都不报（黑底+前景字≠纯色帧），只有接�
 **bash heredoc 写多行 f-string 会被截断**
 用 heredoc 往生成器里追加带 `</div>\n'` 的 f-string 时，换行会变成真实断行导致 SyntaxError。
 生成器一律用 edit 工具改，别用 heredoc。
+
+**Blender 序列帧进 HyperFrames 的两个坑（3D 建模拆解演示）**
+1. 视频元素按 currentTime 定位，但 H.264 长 GOP 会落在最近关键帧（≈第 0 帧画面）——
+   渲染管线和 snapshot 都受影响。**编码必须 `-g 1`（全内帧）**，4s 1080p 约 4-5MB。
+2. bpy `primitive_cylinder_add(location=z)` 的 z 是**中心**不是底部；按"底部累加"写会
+   静止位姿自带缝隙。写法：`location=(0,0,z+h/2)`，`return z+h`，动画存中心再叠抬升量。
+3. 动画循环里 `o.location.z = 抬升量` 会**覆盖**静止高度——必须 `静止中心 + zoff*ex`。
+4. 帧内用 `<video class="clip">` 当全幅背景时，生成器自动注入的 bg div 会与它撞 track 0，
+   组装器报 overlap——写帧时对该帧去掉自动背景层。
+5. 视频 clip 时长小于帧时长时用 `tpad=stop_mode=clone` 把末帧克隆补齐，别让播放器停在黑帧。
