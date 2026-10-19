@@ -237,3 +237,19 @@ data-volume 0.28–0.34；人声比 BGM 高 13–15 dB。
 `build_v2.py` 这类生成器里，源字符串是 `[id="f06-c1"]{...}`，而生成后会被正则改成 `#f06-c1{...}`；
 用 `#f06-c1` 去 patch 源代码会**静默不命中**，坐标没变但构建照常成功，只有抽帧才看得出来。
 规矩：每次批量替换后 `grep -oE '#f06-c1\{[^}]*\}' compositions/frames/*.html` 核对一遍实际值。
+
+**背景层全黑：id 选择器失配（快照人审才能发现）**
+帧内背景层如果磁盘 id 与 CSS 选择器不一致（例如生成器把 id 写成 `{compid}-bg`＝`01-hook-bg`，
+CSS 却写 `[id="f01-bg"]`），作用域化后规则静默失配 → 全片黑底、前景文字正常。
+lint/check/look.mjs 全都不报（黑底+前景字≠纯色帧），只有接触表人审能看出来。
+修法：**背景层一律用专用 class（如 `.fbg { position:absolute; inset:0; background:…; }`），不用 [id=…] 选择器**。
+诊断手段：headless chrome 挂 runtime 后 `getComputedStyle` 看 backgroundColor。
+
+**真实照片切片入帧（最 convincingly 的"效果演示"）**
+`fetch_photos.py` 类目名要精确，先用 Commons API `allcategories?acprefix=` 探测（应县木塔是
+"Category:Pagoda of Fogong Temple"，不是 Sakyamuni…）。切片后帧内按 `原图y × 显示比例` 绝对定位
+可无缝重拼整照；底色取照片天空色，切片抬升时露出的空隙看着就是天空。CC BY-SA 照片要在帧内署名。
+
+**bash heredoc 写多行 f-string 会被截断**
+用 heredoc 往生成器里追加带 `</div>\n'` 的 f-string 时，换行会变成真实断行导致 SyntaxError。
+生成器一律用 edit 工具改，别用 heredoc。
